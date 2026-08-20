@@ -1,0 +1,1146 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>TAP RAID</title>
+
+<style>
+*{
+  box-sizing:border-box;
+  -webkit-tap-highlight-color:transparent;
+}
+
+body{
+  margin:0;
+  background:#0d1017;
+  color:#fff;
+  font-family:system-ui,sans-serif;
+}
+
+.app{
+  max-width:520px;
+  margin:auto;
+  min-height:100vh;
+  background:linear-gradient(#171b27,#0d1017);
+  padding-bottom:24px;
+}
+
+header{
+  text-align:center;
+  padding:16px;
+  border-bottom:1px solid #303747;
+}
+
+h1{
+  margin:0;
+}
+
+.sub{
+  font-size:12px;
+  color:#9ba5ba;
+}
+
+.stats{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+  padding:12px;
+}
+
+.stat,
+.panel,
+.quest{
+  background:#202635;
+  border-radius:14px;
+  padding:10px;
+}
+
+.stat{
+  text-align:center;
+}
+
+.stat b{
+  display:block;
+}
+
+.stat span,
+small{
+  font-size:11px;
+  color:#aab3c5;
+}
+
+.quest{
+  margin:0 12px 10px;
+}
+
+.bar{
+  height:14px;
+  background:#303746;
+  border-radius:99px;
+  overflow:hidden;
+  margin:8px 0;
+}
+
+.hp{
+  height:100%;
+  width:100%;
+  background:linear-gradient(90deg,#ff405d,#ff965c);
+}
+
+button{
+  border:0;
+  border-radius:12px;
+  color:#fff;
+  background:#4658ff;
+  padding:11px;
+  font-weight:800;
+}
+
+.enemy{
+  text-align:center;
+  padding:12px;
+}
+
+.enemyName{
+  font-size:24px;
+  font-weight:900;
+}
+
+.enemyEmoji{
+  font-size:90px;
+}
+
+.damage{
+  height:38px;
+  color:#ffd76a;
+  font-size:24px;
+  font-weight:900;
+}
+
+.tap{
+  width:190px;
+  height:190px;
+  border-radius:50%;
+  font-size:27px;
+  background:radial-gradient(circle,#6373ff,#303cc0);
+  border:7px solid #6574ff;
+  box-shadow:0 0 35px #5262ff66;
+}
+
+.tap:active{
+  transform:scale(.94);
+}
+
+.combo{
+  color:#78e7ff;
+  margin:8px;
+}
+
+.tabs{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:7px;
+  padding:12px;
+}
+
+.tabs button{
+  background:#252d40;
+}
+
+.tabs .active{
+  background:#4b5cff;
+}
+
+.panel{
+  margin:0 12px;
+  min-height:190px;
+}
+
+.row{
+  display:flex;
+  justify-content:space-between;
+  background:#252d3d;
+  padding:10px;
+  border-radius:10px;
+  margin:7px 0;
+}
+
+.log{
+  height:60px;
+  overflow:hidden;
+  color:#aab3c5;
+  font-size:11px;
+  padding:8px 12px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+<header>
+  <h1>⚔️ TAP RAID</h1>
+  <div class="sub">
+    放置 × 連打 × 育成 × ガチャ × 図鑑
+  </div>
+</header>
+
+<div class="stats">
+
+  <div class="stat">
+    <b id="gold">0</b>
+    <span>💰 GOLD</span>
+  </div>
+
+  <div class="stat">
+    <b id="diamond">0</b>
+    <span>💎 DIAMOND</span>
+  </div>
+
+  <div class="stat">
+    <b id="level">1</b>
+    <span>⭐ LEVEL</span>
+  </div>
+
+</div>
+
+<div class="quest">
+
+  <b id="qt">
+    🎯 ミッション
+  </b>
+
+  <small id="qtext"></small>
+
+  <div class="bar">
+    <div id="qbar" class="hp"></div>
+  </div>
+
+  <button onclick="claim()">
+    報酬を受け取る
+  </button>
+
+</div>
+
+<section class="enemy">
+
+  <div class="enemyName" id="en"></div>
+
+  <div class="bar">
+    <div id="ehp" class="hp"></div>
+  </div>
+
+  <div class="enemyEmoji" id="ee"></div>
+
+  <div class="damage" id="dmg"></div>
+
+  <button class="tap" onclick="tap()">
+    TAP
+    <br>
+    <small>ATTACK</small>
+  </button>
+
+  <div class="combo" id="combo"></div>
+
+</section>
+
+<div class="log" id="log"></div>
+
+<div class="tabs">
+
+  <button class="active" onclick="tab('equip',this)">
+    装備
+  </button>
+
+  <button onclick="tab('gacha',this)">
+    ガチャ
+  </button>
+
+  <button onclick="tab('guild',this)">
+    ギルド
+  </button>
+
+  <button onclick="tab('book',this)">
+    図鑑
+  </button>
+
+</div>
+
+<div class="panel" id="panel"></div>
+
+</div>
+
+<script>
+
+const ES = [
+
+  ["スライム","🟢",80],
+
+  ["ゴブリン","👺",120],
+
+  ["ナイトバット","🦇",180],
+
+  ["ダークウルフ","🐺",260],
+
+  ["サンドスコーピオン","🦂",420],
+
+  ["ゾンビ","🧟",650],
+
+  ["ゴースト","👻",900],
+
+  ["トレント","🌳",1400],
+
+  ["ダークメイジ","🧙",2200],
+
+  ["ワイバーン","🐉",3800],
+
+  ["古代兵器","🗿",6500],
+
+  ["深淵騎士","⚔️",11000]
+
+];
+
+
+let S = JSON.parse(localStorage.tr || "null") || {
+
+  g:0,
+
+  d:80,
+
+  l:1,
+
+  xp:0,
+
+  p:12,
+
+  t:0,
+
+  c:0,
+
+  e:0,
+
+  k:0,
+
+  f:[],
+
+  w:0,
+
+  a:0,
+
+  r:0,
+
+  ga:0,
+
+  gu:0,
+
+  login:0,
+
+  last:0,
+
+  q:{
+    type:"kill",
+    goal:20,
+    n:0
+  }
+
+};
+
+
+S.f = new Set(S.f || []);
+
+
+let hp = 0;
+
+
+const save = () => {
+
+  localStorage.tr = JSON.stringify({
+    ...S,
+    f:[...S.f]
+  });
+
+};
+
+
+const fmt = n =>
+  Math.floor(n).toLocaleString();
+
+
+const enemy = () => {
+
+  let x = ES[S.e % ES.length];
+
+  return {
+
+    name:x[0],
+
+    em:x[1],
+
+    max:x[2] *
+      Math.pow(
+        1.16,
+        Math.floor(S.e / ES.length)
+      )
+
+  };
+
+};
+
+
+function spawn(){
+
+  hp = enemy().max;
+
+  S.c = 0;
+
+  draw();
+
+}
+
+
+function log(x){
+
+  document.getElementById("log").innerHTML =
+    "<div>"+x+"</div>"+
+    document.getElementById("log").innerHTML;
+
+}
+
+
+function tap(){
+
+  let crit =
+    Math.random() <
+    Math.min(
+      .35,
+      .05 + S.r * .03
+    );
+
+
+  let dm =
+    S.p *
+    (1 + S.w * .25) *
+    (1 + Math.min(S.c,100) * .008) *
+    (crit ? 3 : 1);
+
+
+  hp -= dm;
+
+  S.c++;
+
+  S.t++;
+
+  S.q.n++;
+
+
+  document.getElementById("dmg").textContent =
+    (crit ? "CRITICAL! " : "") +
+    "-" +
+    fmt(dm);
+
+
+  if(hp <= 0){
+
+    kill();
+
+  }
+
+
+  draw();
+
+  save();
+
+}
+
+
+function kill(){
+
+  let x = enemy();
+
+
+  S.k++;
+
+  S.g +=
+    Math.floor(x.max * .35) +
+    S.l * 4;
+
+
+  S.xp += x.max;
+
+  S.f.add(
+    S.e % ES.length
+  );
+
+
+  S.q.n++;
+
+
+  if(S.c >= 10){
+
+    S.d++;
+
+  }
+
+
+  if(Math.random() < .035){
+
+    S.d += 5;
+
+  }
+
+
+  if(
+    S.xp >=
+    S.l * 1000
+  ){
+
+    S.xp -= S.l * 1000;
+
+    S.l++;
+
+    S.p += 4;
+
+    S.d += 3;
+
+    log("⭐ LEVEL UP!");
+
+  }
+
+
+  S.e++;
+
+  spawn();
+
+  log(
+    "⚔️ "+
+    x.name+
+    "を討伐！"
+  );
+
+}
+
+
+function newq(){
+
+  let a = [
+
+    [
+      "kill",
+      "モンスターを倒せ",
+      15 + Math.random()*45
+    ],
+
+    [
+      "tap",
+      "タップする",
+      40 + Math.random()*160
+    ],
+
+    [
+      "gold",
+      "GOLDを獲得",
+      1000 + Math.random()*5000
+    ],
+
+    [
+      "combo",
+      "コンボを達成",
+      10 + Math.random()*40
+    ]
+
+  ];
+
+
+  let q =
+    a[
+      Math.floor(
+        Math.random()*a.length
+      )
+    ];
+
+
+  S.q = {
+
+    type:q[0],
+
+    goal:Math.floor(q[2]),
+
+    n:0
+
+  };
+
+
+  S.claimed = false;
+
+}
+
+
+function qv(){
+
+  if(S.q.type === "gold"){
+
+    return Math.min(
+      S.q.goal,
+      S.g
+    );
+
+  }
+
+
+  if(S.q.type === "combo"){
+
+    return S.c;
+
+  }
+
+
+  return S.q.n;
+
+}
+
+
+function claim(){
+
+  if(
+    qv() <
+    S.q.goal
+  ){
+
+    return log(
+      "🎯 まだ達成してない！"
+    );
+
+  }
+
+
+  S.d +=
+    10 +
+    Math.floor(
+      Math.random()*16
+    );
+
+
+  S.g += 500;
+
+
+  newq();
+
+
+  log(
+    "💎 ミッション報酬GET！"
+  );
+
+
+  draw();
+
+  save();
+
+}
+
+
+function up(){
+
+  let cost =
+    Math.floor(
+      100 *
+      Math.pow(
+        1.45,
+        S.tl || 1
+      )
+    );
+
+
+  if(S.g < cost){
+
+    return log(
+      "💰 GOLDが足りない！"
+    );
+
+  }
+
+
+  S.g -= cost;
+
+  S.tl =
+    (S.tl || 1) + 1;
+
+
+  S.p +=
+    8 +
+    S.tl * 2;
+
+
+  draw();
+
+  save();
+
+}
+
+
+function gach(){
+
+  if(S.d < 30){
+
+    return log(
+      "💎 ダイヤが足りない！"
+    );
+
+  }
+
+
+  S.d -= 30;
+
+  S.ga++;
+
+
+  let z =
+    Math.random();
+
+
+  let m;
+
+
+  if(z < .03){
+
+    S.w += 2;
+
+    m =
+      "🌟 神話級武器！";
+
+  }
+
+  else if(z < .12){
+
+    S.w++;
+
+    m =
+      "⭐ レア武器！";
+
+  }
+
+  else if(z < .3){
+
+    S.a++;
+
+    m =
+      "🛡️ レア防具！";
+
+  }
+
+  else if(z < .5){
+
+    S.r++;
+
+    m =
+      "💍 指輪！";
+
+  }
+
+  else{
+
+    S.g += 2500;
+
+    m =
+      "💰 2500 GOLD！";
+
+  }
+
+
+  log(
+    "🎰 "+m
+  );
+
+
+  draw();
+
+  save();
+
+}
+
+
+function tab(t,b){
+
+  document
+    .querySelectorAll(".tabs button")
+    .forEach(
+      x =>
+        x.classList.remove("active")
+    );
+
+
+  b.classList.add("active");
+
+
+  let p =
+    document.getElementById(
+      "panel"
+    );
+
+
+  if(t === "equip"){
+
+    p.innerHTML =
+
+      "<h3>🎒 装備</h3>"+
+
+      "<div class=row>"+
+      "⚔️ 武器 "+
+      "<b>Lv."+S.w+"</b>"+
+      "</div>"+
+
+      "<div class=row>"+
+      "🛡️ 防具 "+
+      "<b>Lv."+S.a+"</b>"+
+      "</div>"+
+
+      "<div class=row>"+
+      "💍 指輪 "+
+      "<b>Lv."+S.r+"</b>"+
+      "</div>"+
+
+      "<div class=row>"+
+      "👊 タップ攻撃 "+
+      "<b>"+
+      fmt(S.p)+
+      "</b>"+
+      "</div>"+
+
+      "<button onclick=up()>"+
+      "🔨 タップ強化"+
+      "</button>";
+
+  }
+
+
+  if(t === "gacha"){
+
+    p.innerHTML =
+
+      "<h3>🎰 古代遺物ガチャ</h3>"+
+
+      "<p>1回 💎30</p>"+
+
+      "<div class=row>"+
+      "累計ガチャ "+
+      "<b>"+
+      S.ga+
+      "回</b>"+
+      "</div>"+
+
+      "<button onclick=gach()>"+
+      "ガチャを引く！"+
+      "</button>";
+
+  }
+
+
+  if(t === "guild"){
+
+    p.innerHTML =
+
+      "<h3>🏰 ギルド</h3>"+
+
+      "<div class=row>"+
+      "黒狼騎士団 "+
+      "<b>Lv."+
+      (5+S.gu)+
+      "</b>"+
+      "</div>"+
+
+      "<div class=row>"+
+      "👹 ギルドレイド "+
+      "<small>"+
+      "災厄竜ヴァルグ"+
+      "</small>"+
+      "</div>"+
+
+      "<button onclick='"+
+      "S.gu++;"+
+      "S.g+=1000;"+
+      "log(\"⚔️ レイド貢献報酬GET！\");"+
+      "save();"+
+      "tab(\"guild\",b)"+
+      "'>"+
+      "レイドに参加"+
+      "</button>";
+
+  }
+
+
+  if(t === "book"){
+
+    p.innerHTML =
+
+      "<h3>📖 モンスター図鑑</h3>"+
+
+      "<p>"+
+      "発見 "+
+      S.f.size+
+      "/"+
+      ES.length+
+      "</p>"+
+
+      ES.map(
+        (x,i) =>
+
+          "<div class=row>"+
+          (
+            S.f.has(i)
+              ? x[1]+" "+x[0]
+              : "❓ 未発見"
+          )+
+
+          " <small>"+
+          (
+            S.f.has(i)
+              ? "討伐済み"
+              : "???"
+          )+
+          "</small>"+
+
+          "</div>"
+
+      ).join("");
+
+  }
+
+}
+
+
+function draw(){
+
+  let x =
+    enemy();
+
+
+  gold.textContent =
+    fmt(S.g);
+
+
+  diamond.textContent =
+    fmt(S.d);
+
+
+  level.textContent =
+    S.l;
+
+
+  en.textContent =
+    x.name;
+
+
+  ee.textContent =
+    x.em;
+
+
+  ehp.style.width =
+    Math.max(
+      0,
+      hp / x.max * 100
+    )+
+    "%";
+
+
+  combo.textContent =
+    "COMBO "+
+    S.c+
+    "　｜　TAP "+
+    fmt(S.t);
+
+
+  qtext.textContent =
+
+    (
+      S.q.type === "kill"
+        ? "討伐"
+        : S.q.type === "tap"
+        ? "タップ"
+        : S.q.type === "gold"
+        ? "GOLD"
+        : "コンボ"
+    )+
+
+    "："+
+
+    Math.min(
+      qv(),
+      S.q.goal
+    )+
+
+    " / "+
+
+    S.q.goal;
+
+
+  qbar.style.width =
+    Math.min(
+      100,
+      qv() /
+      S.q.goal *
+      100
+    )+
+    "%";
+
+}
+
+
+function login(){
+
+  let d =
+    new Date();
+
+
+  d.setHours(
+    0,0,0,0
+  );
+
+
+  if(
+    S.last !==
+    d.getTime()
+  ){
+
+    S.last =
+      d.getTime();
+
+
+    S.login++;
+
+
+    S.g +=
+      500 +
+      S.login * 20;
+
+
+    S.d +=
+      5 +
+      Math.min(
+        20,
+        S.login % 30
+      );
+
+
+    log(
+      "🎁 ログインボーナス "+
+      S.login+
+      "日目！"
+    );
+
+
+    save();
+
+  }
+
+}
+
+
+function idle(){
+
+  let last =
+    +localStorage.trTime ||
+    Date.now();
+
+
+  let sec =
+    Math.min(
+      43200,
+      (Date.now()-last)/1000
+    );
+
+
+  if(sec > 30){
+
+    let n =
+      Math.floor(
+        sec/2
+      );
+
+
+    let gain =
+      n *
+      (8+S.l*3);
+
+
+    S.g += gain;
+
+    S.k += n;
+
+
+    log(
+      "🌙 放置報酬！ "+
+      n+
+      "体 / "+
+      fmt(gain)+
+      "G"
+    );
+
+
+    save();
+
+  }
+
+
+  localStorage.trTime =
+    Date.now();
+
+}
+
+
+if(
+  !S.q ||
+  !S.q.goal
+){
+
+  newq();
+
+}
+
+
+login();
+
+idle();
+
+spawn();
+
+tab(
+  "equip",
+  document.querySelector(
+    ".tabs button"
+  )
+);
+
+
+setInterval(
+
+  () => {
+
+    let dm =
+      S.p * .7;
+
+
+    hp -= dm;
+
+
+    if(hp <= 0){
+
+      kill();
+
+    }
+
+
+    draw();
+
+    save();
+
+  },
+
+  1000
+
+);
+
+</script>
+
+</body>
+</html>
